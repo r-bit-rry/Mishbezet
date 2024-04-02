@@ -1,4 +1,5 @@
 import { React, useState, useEffect } from "react";
+import { ratio } from "fuzzball";
 import LetterBar from "./LetterBar";
 import WordList from "./WordList";
 import words from "./wrds.json";
@@ -32,8 +33,9 @@ function App() {
     }
   }, [selectedLetter]);
   const [familiarWords, setFamiliarWords] = useState(
-    JSON.parse(localStorage.getItem("familiarWords")) || []
+    JSON.parse(localStorage.getItem("familiarWords")) || {}
   );
+
   useEffect(() => {
     localStorage.setItem("familiarWords", JSON.stringify(familiarWords));
   }, [familiarWords]);
@@ -41,7 +43,24 @@ function App() {
   const openClearCacheModal = () => {
     setClearCacheModalOpen(true);
   };
+  const GetQuizWord = ({ currentWord, familiarWords }) => {
+    const capitalizeWords = (str) => {
+      return (str || "")
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    };
 
+    return (
+      <p>
+        {capitalizeWords(
+          currentWord.eng[
+            (familiarWords[currentWord.hb] || 0) % currentWord.eng.length
+          ]
+        )}
+      </p>
+    );
+  };
   const closeClearCacheModal = () => {
     setClearCacheModalOpen(false);
   };
@@ -58,43 +77,70 @@ function App() {
     setUserInput(event.target.value);
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    if (userInput === currentWord.hb) {
-      setResponse("Correct!");
-      if (!familiarWords.includes(currentWord.hb)) {
-        setFamiliarWords([...familiarWords, currentWord.hb]);
-      }
-    } else {
-      setResponse(`Incorrect, the correct answer was ${currentWord.hb}`);
-      if (familiarWords.includes(currentWord.hb)) {
-        setFamiliarWords(
-          familiarWords.filter((word) => word !== currentWord.hb)
-        );
-      }
+const getWeightedRandomWord = (words, familiarWords) => {
+  const totalWeight = words.reduce((total, word, index) => {
+    const familiarity = familiarWords[word.hb] || 0;
+    // Lower index (more common word) and less familiarity increases weight
+    return total + (1 / (1 + familiarity)) * (1 / (1 + index));
+  }, 0);
+
+  let randomNum = Math.random() * totalWeight;
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const familiarity = familiarWords[word.hb] || 0;
+    const weight = (1 / (1 + familiarity)) * (1 / (1 + i));
+    if (randomNum < weight) {
+      return word;
     }
-    setUserInput("");
-    startFlashcardTest();
-  };
+    randomNum -= weight;
+  }
+
+  // Fallback to last word if no word selected (should not happen in practice)
+  return words[words.length - 1];
+};
+
+
+const handleSubmit = (event) => {
+  event.preventDefault();
+  let calculatedRatio = ratio(userInput, currentWord.hb);
+  console.log(`Fuzzy match ratio: ${calculatedRatio}`);
+  if (calculatedRatio > 80) {
+    setResponse(
+      <p style={{ backgroundColor: "green", color: "white" }}>
+        Correct, the word is {currentWord.hb}
+      </p>
+    );
+    setFamiliarWords({
+      ...familiarWords,
+      [currentWord.hb]: (familiarWords[currentWord.hb] || 0) + 1,
+    });
+  } else {
+    setResponse(
+      <p style={{ backgroundColor: "red", color: "white" }}>
+        Incorrect, the correct answer was {currentWord.hb}
+      </p>
+    );
+    if (familiarWords[currentWord.hb]) {
+      setFamiliarWords({
+        ...familiarWords,
+        [currentWord.hb]: familiarWords[currentWord.hb] - 1,
+      });
+    }
+  }
+  setUserInput("");
+  startFlashcardTest();
+};
   const startFlashcardLetterTest = () => {
-    const testWords = filteredWords
-      .map((word) => ({
-        ...word,
-        isFamiliar: familiarWords.includes(word.hb),
-      }))
-      .sort((a, b) => 0.2 * a.isFamiliar - 0.2 * b.isFamiliar)
-      .slice(0, 10);
+  const testWords = Array.from({ length: 10 }, () =>
+    getWeightedRandomWord(words, familiarWords)
+  );
     setCurrentWord(testWords[Math.floor(Math.random() * testWords.length)]);
     setShowFlashcard(true);
   };
   const startFlashcardTest = () => {
-    const testWords = words
-      .map((word) => ({
-        ...word,
-        isFamiliar: familiarWords.includes(word.hb),
-      }))
-      .sort((a, b) => 0.2 * a.isFamiliar - 0.2 * b.isFamiliar)
-      .slice(0, 10);
+const testWords = Array.from({ length: 10 }, () =>
+  getWeightedRandomWord(words, familiarWords)
+);
     setCurrentWord(testWords[Math.floor(Math.random() * testWords.length)]);
     setShowFlashcard(true);
   };
@@ -136,7 +182,10 @@ function App() {
               <CloseButton onClick={() => setShowFlashcard(false)}>
                 X
               </CloseButton>
-              <p>{currentWord.eng.join(", ")}</p>
+              <GetQuizWord
+                currentWord={currentWord}
+                familiarWords={familiarWords}
+              />
               <form onSubmit={handleSubmit}>
                 <TextInput
                   type="text"
@@ -145,7 +194,7 @@ function App() {
                 />
                 <SubmitButton type="submit">Submit</SubmitButton>
               </form>
-              {response && <p>{response}</p>}
+              {response}
             </Flashcard>
           </FlashcardContainer>
         )}

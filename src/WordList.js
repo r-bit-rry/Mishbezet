@@ -32,18 +32,17 @@ function WordList({ selectedLetter, filteredWords, familiarWords}) {
             <Table>
               <tbody>
                 {filteredWords.map((word, index) => {
-                  const isFamiliar = familiarWords.includes(word.hb);
                   return (
                     <tr key={index}>
                       <Td style={{ width: "15%" }}>{word.hb}</Td>
                       <Td style={{ width: "20%" }}>{word.phn.join(", ")}</Td>
-                      {isFamiliar ? (
-                        <FamiliarTd style={{ width: "55%" }}>
+                        <FamiliarTd
+                          familiarity={familiarWords[word.hb]}
+                          length={word.eng.length}
+                          style={{ width: "55%" }}
+                        >
                           {word.eng.join(", ")}
                         </FamiliarTd>
-                      ) : (
-                        <Td style={{ width: "55%" }}>{word.eng.join(", ")}</Td>
-                      )}
                       <Td style={{ width: "10%" }}>{index + 1}</Td>
                     </tr>
                   );
