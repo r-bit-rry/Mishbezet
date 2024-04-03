@@ -1,5 +1,5 @@
 # Use an official Node runtime as the base image
-FROM node:14
+FROM node:14 as build
 
 # Set the working directory in the container to /app
 WORKDIR /app
@@ -13,8 +13,18 @@ RUN npm install
 # Bundle app source
 COPY . .
 
-# Make port 3000 available to the world outside this container
-EXPOSE 3000
+# Build the app
+RUN npm run build
 
-# Run the app when the container launches
-CMD ["npm", "start"]
+# Stage 2 - the production environment
+FROM nginx:1.17.9-alpine
+
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Copy the nginx.conf file to set up the configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port 80
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
