@@ -161,9 +161,9 @@ export const FamiliarTd = styled(Td)`
   background-color: ${(props) => {
     if (props.familiarity === 0) {
       return theme.transparent;
-    } else if (props.familiarity === props.length) {
+    } else if (props.familiarity >= props.length) {
       return theme.familiar;
-    } else if (props.familiarity > 0 && props.familiarity < props.length) {
+    } else if (props.familiarity > 0) {
       return theme.lightOrange;
     }
   }};

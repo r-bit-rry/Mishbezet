@@ -104,7 +104,7 @@ const handleSubmit = (event) => {
   event.preventDefault();
   let calculatedRatio = ratio(userInput, currentWord.hb);
   console.log(`Fuzzy match ratio: ${calculatedRatio}`);
-  if (calculatedRatio > 80) {
+  if (calculatedRatio === 100) {
     setResponse(
       <p style={{ backgroundColor: "green", color: "white" }}>
         Correct, the word is {currentWord.hb}
@@ -114,6 +114,13 @@ const handleSubmit = (event) => {
       ...familiarWords,
       [currentWord.hb]: (familiarWords[currentWord.hb] || 0) + 1,
     });
+  }
+  else if (calculatedRatio > 80) {
+    setResponse(
+      <p style={{ backgroundColor: "orange", color: "white" }}>
+        Almost, the word is {currentWord.hb}
+      </p>
+    );
   } else {
     setResponse(
       <p style={{ backgroundColor: "red", color: "white" }}>
@@ -128,22 +135,14 @@ const handleSubmit = (event) => {
     }
   }
   setUserInput("");
-  startFlashcardTest();
+  const wordsForQuiz = selectedLetter ? filteredWords : words;
+  startFlashcardTest(wordsForQuiz);
 };
-  const startFlashcardLetterTest = () => {
-  const testWords = Array.from({ length: 10 }, () =>
-    getWeightedRandomWord(words, familiarWords)
-  );
-    setCurrentWord(testWords[Math.floor(Math.random() * testWords.length)]);
-    setShowFlashcard(true);
-  };
-  const startFlashcardTest = () => {
-const testWords = Array.from({ length: 10 }, () =>
-  getWeightedRandomWord(words, familiarWords)
-);
-    setCurrentWord(testWords[Math.floor(Math.random() * testWords.length)]);
-    setShowFlashcard(true);
-  };
+
+const startFlashcardTest = (wordsForQuiz) => {
+  setCurrentWord(getWeightedRandomWord(wordsForQuiz, familiarWords));
+  setShowFlashcard(true);
+};
 
   const handleLetterClick = (letter) => {
     setSelectedLetter(letter);
@@ -160,11 +159,11 @@ const testWords = Array.from({ length: 10 }, () =>
           familiarWords={familiarWords}
         />
         <ButtonContainer>
-          <StyledButton onClick={startFlashcardTest}>
+          <StyledButton onClick={() => startFlashcardTest(words)}>
             Start Flashcard Test
           </StyledButton>
           <StyledButton
-            onClick={startFlashcardLetterTest}
+            onClick={() => startFlashcardTest(filteredWords)}
             disabled={selectedLetter === null}
           >
             Start Flashcard Test (Letter)
